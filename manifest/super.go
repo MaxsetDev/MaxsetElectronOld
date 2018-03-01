@@ -56,7 +56,7 @@ func (par *Parent) RemoveFile(path string) error {
 
 func (par *Parent) Id() string {
 	par.init()
-	return "KEYNLP-Everything"
+	return "ALL INJESTED FILES"
 }
 
 func (par *Parent) ListFiles() []string {
@@ -80,8 +80,17 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 		record := v
 		metastring, err := record.GetSet()
 		if err != nil {
-			errorcallback(err)
-			return err
+			errorcallback(fmt.Errorf("unable to get set string: %s", err))
+			err = record.Update(Patterndata)
+			if err != nil {
+				errorcallback(fmt.Errorf("correction failed: %s", err.Error()))
+				return err
+			}
+			metastring, err = record.GetSet()
+			if err != nil {
+				errorcallback(fmt.Errorf("unable to get set string after recovery: %s", err))
+				return err
+			}
 		}
 		if q.Check(metastring) {
 			content, err := record.GetTagged()
@@ -111,12 +120,19 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 			} else {
 				for _, sent := range content {
 					if (b == query.Sentence && matches[sent.Position]) || (b == query.Paragraph && matches[sent.Paragraph]) {
-						matchcallback(SearchResult{
+						result := SearchResult{
 							Words:     joinPhrases(sent),
 							Paragraph: sent.Paragraph,
 							Sentence:  sent.Position,
 							Document:  record.GetPath(),
-						})
+							Matches:   make([]int, 0),
+						}
+						for i, wrd := range result.Words {
+							if q.IsTerm(wrd) {
+								result.Matches = append(result.Matches, i)
+							}
+						}
+						matchcallback(result)
 					}
 				}
 			}
@@ -140,9 +156,51 @@ func joinPhrases(s types.TaggedSent) []string {
 	return result
 }
 
-func (par *Parent) Cleanup(toolkit proc.Processor) error {
+func (par *Parent) Cleanup(toolkit proc.Processor) chan error {
+	reports := make(chan error, 10)
+	del := make(chan *element)
+	size := 0
 	for _, v := range par.Data {
-		go v.Update(toolkit)
+		size++
+		go func() {
+			if err := v.Update(toolkit); err != nil {
+				reports <- err
+				del <- v
+			} else {
+				del <- nil
+			}
+		}()
 	}
-	return nil
+	go func() {
+		for d := range del {
+			if d != nil {
+				if _, ok := par.Data[d.Original]; ok {
+					delete(par.Data, d.Original)
+				}
+				d.Delete()
+			}
+			size--
+			if size <= 0 {
+				break
+			}
+		}
+		close(reports)
+	}()
+	return reports
+}
+
+func (par *Parent) GetTagged(fname string) ([]types.TaggedSent, error) {
+	ele, ok := par.Data[fname]
+	if !ok || ele == nil {
+		return nil, ErrNotFound
+	}
+	return ele.GetTagged()
+}
+
+func (par *Parent) GetSet(fname string) (string, error) {
+	ele, ok := par.Data[fname]
+	if !ok || ele == nil {
+		return "", ErrNotFound
+	}
+	return ele.GetSet()
 }

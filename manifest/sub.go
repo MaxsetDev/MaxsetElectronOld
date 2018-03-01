@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"maxset.io/devon/keynlp/proc"
+	"maxset.io/devon/keynlp/types"
 	"maxset.io/devon/knsearch/query"
 )
 
@@ -101,12 +102,19 @@ func (sele *Selection) Search(q query.Query, b query.Block, s uint, matchcallbac
 				} else {
 					for _, sent := range content {
 						if (b == query.Sentence && matches[sent.Position]) || (b == query.Paragraph && matches[sent.Paragraph]) {
-							matchcallback(SearchResult{
+							result := SearchResult{
 								Words:     joinPhrases(sent),
 								Paragraph: sent.Paragraph,
 								Sentence:  sent.Position,
 								Document:  record.GetPath(),
-							})
+								Matches:   make([]int, 0),
+							}
+							for i, wrd := range result.Words {
+								if q.IsTerm(wrd) {
+									result.Matches = append(result.Matches, i)
+								}
+							}
+							matchcallback(result)
 						}
 					}
 				}
@@ -116,9 +124,26 @@ func (sele *Selection) Search(q query.Query, b query.Block, s uint, matchcallbac
 					Paragraph: 0,
 					Sentence:  0,
 					Document:  record.GetPath(),
+					Matches:   []int{},
 				})
 			}
 		}
 	}
 	return nil
+}
+
+func (sele *Selection) GetTagged(fname string) ([]types.TaggedSent, error) {
+	if sele.Data[fname] {
+		return Super.GetTagged(fname)
+	} else {
+		return nil, ErrNotFound
+	}
+}
+
+func (sele *Selection) GetSet(fname string) (string, error) {
+	if sele.Data[fname] {
+		return Super.GetSet(fname)
+	} else {
+		return "", ErrNotFound
+	}
 }

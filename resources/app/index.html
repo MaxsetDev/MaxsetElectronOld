@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="static/css/base.css"/>
+    <link rel="stylesheet" href="static/css/controls.css"/>
+    <link rel="stylesheet" href="static/css/list.css"/>
+    <link rel="stylesheet" href="static/css/result.css"/>
     <link rel="stylesheet" href="static/lib/astiloader/astiloader.css">
     <link rel="stylesheet" href="static/lib/astimodaler/astimodaler.css">
     <link rel="stylesheet" href="static/lib/astinotifier/astinotifier.css">
@@ -10,6 +13,22 @@
 </head>
 <body>
     <div class="top" id="controls">
+        <div class="left_control" id="control_left">
+            <h3 id="left_header">Select Manifest</h3>
+            <form id="data_inputs">
+                <input type="text" name="text_input" id="text_input" placeholder="New Manifest Name"/>
+                <button id="click_input" type="submit" onclick="index.submitAction(event);">Create Manifest</button>
+            </form>
+        </div>
+        <div class="right_control" id="manifest_display">
+            <button id="gotoselect" type="button" onclick="index.toSelect();" disabled>Select A Manifest</button>
+            <h3>Active Manifest: <span id="manifest_name">All Searchable Files</span></h3>
+            <button id="gotosearch" type="button" onclick="index.toSearch();">Search This Manifest</button>
+            <div style="overflow:auto;">
+                <ul id="manifest_contents"></ul>
+                <button id="gotomanifest" type="button" onclick="index.toManage(index.manifest);">Add Files</button>
+            </div>
+        </div>
     </div>
     <div class="bottom" id="display">
     </div>

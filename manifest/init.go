@@ -3,9 +3,11 @@ package manifest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"maxset.io/devon/keynlp/proc"
 	"maxset.io/devon/rot128"
@@ -35,8 +37,17 @@ func Init() error {
 	if err := mlistinit(exfolder); err != nil {
 		return err
 	}
-	if err := Super.Cleanup(Patterndata); err != nil {
-		return err
+	errq := Super.Cleanup(Patterndata)
+	cleanerrQ := make([]error, 0)
+	for cleanerr := range errq {
+		cleanerrQ = append(cleanerrQ, cleanerr)
+	}
+	if len(cleanerrQ) > 0 {
+		errmssgs := make([]string, 0, len(cleanerrQ))
+		for _, e := range cleanerrQ {
+			errmssgs = append(errmssgs, e.Error())
+		}
+		return fmt.Errorf("Error on initial file preparation: %s", strings.Join(errmssgs, "...AND..."))
 	}
 	return nil
 }

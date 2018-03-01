@@ -35,9 +35,11 @@ func newElement(path string, toolkit proc.Processor) (result *element, err error
 	if err != nil {
 		panic(err)
 	}
-	result.Update(toolkit)
-
-	return result, nil
+	err = result.Update(toolkit)
+	if err != nil {
+		result = nil
+	}
+	return
 }
 
 func (ele *element) Update(toolkit proc.Processor) (err error) {

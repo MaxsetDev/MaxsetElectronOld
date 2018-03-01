@@ -4,16 +4,21 @@ import (
 	"maxset.io/devon/knsearch/query"
 	"fmt"
 	"os"
+	"io"
 	"path/filepath"
 	"encoding/json"
 	"strings"
+	"bytes"
 	"maxset.io/devon/keynlp-gui/manifest"
+	"maxset.io/devon/keynlp/types"
+	"maxset.io/devon/docsheet/tagtorow"
 
 	bootstrap "github.com/asticode/go-astilectron-bootstrap"
 	"github.com/asticode/go-astilectron"
 )
 
 func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload interface{}, err error) {
+	payload = ""
 	switch m.Name {
 	case "get.cwd":
 		if payload, err = os.Getwd(); err != nil {
@@ -25,7 +30,6 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			Up bool
 			Down string
 		}
-		payload = ""
 		if err = json.Unmarshal(m.Payload, &update); err != nil {
 			payload = err.Error()
 			return
@@ -56,11 +60,10 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			payload = err.Error()
 			return
 		}
-		payload = ""
 	case "get.listman":
 		var names = make([]string, 0, len(manifest.ManifestList)+1)
-		names = append(names, "ALL")
-		for k, _ := range manifest.ManifestList {
+		names = append(names, "All Searchable Files")
+		for k := range manifest.ManifestList {
 			names = append(names, k)
 		}
 		payload = names
@@ -72,7 +75,7 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 		}
 		var manif manifest.Manifest
 		var ok bool
-		if name == "ALL" {
+		if name == "All Searchable Files" {
 			manif = manifest.Super
 		}else if manif, ok = manifest.ManifestList[name]; !ok {
 			err = fmt.Errorf("%s not recognized manifest", name)
@@ -83,6 +86,11 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 	case "create.manifest":
 		var name string
 		if err = json.Unmarshal(m.Payload, &name); err != nil {
+			payload = err.Error()
+			return
+		}
+		if name == "All Searchable Files" || manifest.ManifestList[name] != nil{
+			err = fmt.Errorf("Manifest Already Exists")
 			payload = err.Error()
 			return
 		}
@@ -99,7 +107,7 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			return
 		}
 		var manif manifest.Manifest
-		if data.Manifest == "ALL" {
+		if data.Manifest == "All Searchable Files" {
 			manif = manifest.Super
 		} else {
 			var ok bool
@@ -117,7 +125,6 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			payload = err.Error()
 			return
 		}
-		payload = ""
 	case "search":
 		var data struct {
 			Manifest string
@@ -133,7 +140,24 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			return
 		}
 		bootstrap.SendMessage(w, "search.complete", data.Data)
-		payload = ""
+	case "make.docsheet":
+		var data struct {
+			Original string
+			Saveto string
+		}
+		if err = json.Unmarshal(m.Payload, &data); err != nil {
+			payload = err.Error()
+			return
+		}
+		var txt []types.TaggedSent
+		if txt, err = manifest.Super.GetTagged(data.Original); err != nil {
+			payload = err.Error()
+			return
+		}
+		if err = buildDocSheet(data.Saveto, txt); err != nil {
+			payload = err.Error()
+			return
+		}
 	}
 	return 
 }
@@ -169,7 +193,7 @@ func listdir(dir string) (dircontent, error) {
 
 func simplequery(manname, data string) error {
 	var manif manifest.Manifest
-	if manname == "ALL" {
+	if manname == "All Searchable Files" {
 		manif = manifest.Super
 	} else if manif, _ = manifest.ManifestList[manname]; manif == nil {
 		return fmt.Errorf("%s is not a recognized", manname)
@@ -194,6 +218,24 @@ func simplequery(manname, data string) error {
 	}, func(err error){
 		bootstrap.SendMessage(w, "alert", err.Error())
 	})
+	return err
+}
+
+func buildDocSheet(fname string, content []types.TaggedSent) error {
+	f, err := os.Open(fname)
+	if err != nil {
+		return err
+	}
+	byts := tagtorow.ToBytes(tagtorow.ToRows(content, []types.Synth{
+		types.CONDITION,
+		types.TOPIC,
+		types.ACTION,
+		types.RESOURCE,
+		types.PROCESS,
+		types.CONNECTION,
+		types.UNKNOWN,
+	}))
+	_, err = io.Copy(f, bytes.NewReader(byts))
 	if err != nil {
 		return err
 	}
