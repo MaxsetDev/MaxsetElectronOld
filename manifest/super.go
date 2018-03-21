@@ -3,6 +3,7 @@ package manifest
 import (
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	"maxset.io/devon/keynlp/proc"
 	"maxset.io/devon/keynlp/types"
@@ -13,6 +14,7 @@ var Super *Parent
 
 type Parent struct {
 	Data map[string]*element
+	lock sync.Mutex
 }
 
 func (par *Parent) init() {
@@ -21,20 +23,26 @@ func (par *Parent) init() {
 	}
 }
 
-func (par Parent) AddFile(path string, toolkit proc.Processor) error {
+func (par *Parent) AddFile(path string, toolkit proc.Processor) error {
 	par.init()
 	fullpath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
+	par.lock.Lock()
 	if par.Data[fullpath] != nil {
+		par.lock.Unlock()
 		return nil
 	}
+	par.Data[fullpath] = new(element)
+	par.lock.Unlock()
 	temp, err := newElement(fullpath, toolkit)
 	if err != nil {
 		return err
 	}
+	par.lock.Lock()
 	par.Data[fullpath] = temp
+	par.lock.Unlock()
 	return nil
 }
 
@@ -47,20 +55,28 @@ func (par *Parent) RemoveFile(path string) error {
 	var ele *element
 	ele = par.Data[fullpath]
 	if ele == nil {
-		return fmt.Errorf("%s not contained")
+		return nil
 	}
+	par.lock.Lock()
+	delete(par.Data, fullpath)
+	//par.Data[fullpath] = nil
+	par.lock.Unlock()
 	ele.Delete()
-	par.Data[fullpath] = nil
+	for _, v := range ManifestList {
+		v.RemoveFile(fullpath)
+	}
 	return nil
 }
 
 func (par *Parent) Id() string {
 	par.init()
-	return "ALL INJESTED FILES"
+	return "All Searchable Files"
 }
 
 func (par *Parent) ListFiles() []string {
 	par.init()
+	par.lock.Lock()
+	defer par.lock.Unlock()
 	result := make([]string, 0, len(par.Data))
 	for k, v := range par.Data {
 		if v != nil {
@@ -76,6 +92,8 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 			errorcallback(fmt.Errorf("panic in search: %s", r))
 		}
 	}()
+	par.lock.Lock()
+	defer par.lock.Unlock()
 	for _, v := range par.Data {
 		record := v
 		metastring, err := record.GetSet()
@@ -116,6 +134,8 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 					Paragraph: 0,
 					Sentence:  0,
 					Document:  record.GetPath(),
+					Name:      filepath.Base(record.GetPath()),
+					Matches:   make([]int, 0),
 				})
 			} else {
 				for _, sent := range content {
@@ -125,6 +145,7 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 							Paragraph: sent.Paragraph,
 							Sentence:  sent.Position,
 							Document:  record.GetPath(),
+							Name:      filepath.Base(record.GetPath()),
 							Matches:   make([]int, 0),
 						}
 						for i, wrd := range result.Words {
@@ -142,6 +163,8 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 				Paragraph: 0,
 				Sentence:  0,
 				Document:  record.GetPath(),
+				Name:      filepath.Base(record.GetPath()),
+				Matches:   make([]int, 0),
 			})
 		}
 	}
@@ -160,36 +183,42 @@ func (par *Parent) Cleanup(toolkit proc.Processor) chan error {
 	reports := make(chan error, 10)
 	del := make(chan *element)
 	size := 0
+	par.lock.Lock()
 	for _, v := range par.Data {
 		size++
-		go func() {
+		go func(v *element) {
 			if err := v.Update(toolkit); err != nil {
 				reports <- err
 				del <- v
 			} else {
 				del <- nil
 			}
-		}()
+		}(v)
 	}
 	go func() {
-		for d := range del {
-			if d != nil {
-				if _, ok := par.Data[d.Original]; ok {
-					delete(par.Data, d.Original)
+		if size > 0 {
+			for d := range del {
+				if d != nil {
+					if _, ok := par.Data[d.Original]; ok {
+						delete(par.Data, d.Original)
+					}
+					d.Delete()
 				}
-				d.Delete()
-			}
-			size--
-			if size <= 0 {
-				break
+				size--
+				if size <= 0 {
+					break
+				}
 			}
 		}
 		close(reports)
+		par.lock.Unlock()
 	}()
 	return reports
 }
 
 func (par *Parent) GetTagged(fname string) ([]types.TaggedSent, error) {
+	par.lock.Lock()
+	defer par.lock.Unlock()
 	ele, ok := par.Data[fname]
 	if !ok || ele == nil {
 		return nil, ErrNotFound
@@ -198,6 +227,8 @@ func (par *Parent) GetTagged(fname string) ([]types.TaggedSent, error) {
 }
 
 func (par *Parent) GetSet(fname string) (string, error) {
+	par.lock.Lock()
+	defer par.lock.Unlock()
 	ele, ok := par.Data[fname]
 	if !ok || ele == nil {
 		return "", ErrNotFound

@@ -26,10 +26,11 @@ func (sele *Selection) AddFile(path string, toolkit proc.Processor) error {
 	if err != nil {
 		return err
 	}
+	sele.Data[fullpath] = true
 	if err = Super.AddFile(fullpath, toolkit); err != nil {
+		sele.Data[fullpath] = false
 		return err
 	}
-	sele.Data[fullpath] = true
 	return nil
 }
 
@@ -38,7 +39,9 @@ func (sele *Selection) RemoveFile(path string) error {
 	if err != nil {
 		return err
 	}
-	sele.Data[fullpath] = false
+	if _, ok := sele.Data[fullpath]; ok {
+		delete(sele.Data, fullpath)
+	}
 	return nil
 }
 
@@ -98,6 +101,8 @@ func (sele *Selection) Search(q query.Query, b query.Block, s uint, matchcallbac
 						Paragraph: 0,
 						Sentence:  0,
 						Document:  record.GetPath(),
+						Name:      filepath.Base(record.GetPath()),
+						Matches:   make([]int, 0),
 					})
 				} else {
 					for _, sent := range content {
@@ -107,6 +112,7 @@ func (sele *Selection) Search(q query.Query, b query.Block, s uint, matchcallbac
 								Paragraph: sent.Paragraph,
 								Sentence:  sent.Position,
 								Document:  record.GetPath(),
+								Name:      filepath.Base(record.GetPath()),
 								Matches:   make([]int, 0),
 							}
 							for i, wrd := range result.Words {
@@ -124,7 +130,8 @@ func (sele *Selection) Search(q query.Query, b query.Block, s uint, matchcallbac
 					Paragraph: 0,
 					Sentence:  0,
 					Document:  record.GetPath(),
-					Matches:   []int{},
+					Name:      filepath.Base(record.GetPath()),
+					Matches:   make([]int, 0),
 				})
 			}
 		}

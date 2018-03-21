@@ -21,5 +21,6 @@ type SearchResult struct {
 	Paragraph uint
 	Sentence  uint
 	Document  string
+	Name      string
 	Matches   []int
 }

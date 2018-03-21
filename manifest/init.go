@@ -18,6 +18,7 @@ var ManifestList map[string]*Selection
 var Patterndata proc.Processor
 
 func Init() error {
+	//return fmt.Errorf("manifest init called")
 	exe, err := os.Executable()
 	if err != nil {
 		return err
@@ -82,10 +83,8 @@ func superinit(exfolder string) error {
 	}
 	dcd := json.NewDecoder(sf)
 	Super = new(Parent)
-	if err := dcd.Decode(Super); err != nil {
-		return err
-	}
-	return nil
+	err = dcd.Decode(Super)
+	return err
 }
 
 func mlistinit(exfolder string) error {

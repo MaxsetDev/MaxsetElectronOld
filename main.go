@@ -1,7 +1,10 @@
 package main
 
 import (
+	"os"
+	"os/user"
 	"flag"
+	"log"
 
 	bootstrap "github.com/asticode/go-astilectron-bootstrap"
 	"github.com/asticode/go-astilog"
@@ -15,11 +18,18 @@ var (
 	BuiltAt string
 	debug   = flag.Bool("d", false, "enables the debug mode")
 	w       *astilectron.Window
+	threadCount = flag.Int("t", 4, "number of threads to create in worker pools")
 )
 
 func main() {
 	flag.Parse()
 	astilog.FlagInit()
+
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatalf("getting current user error: %s", err.Error())
+	}
+	os.Chdir(currentUser.HomeDir)
 
 	astilog.Debugf("Running app built at %s", BuiltAt)
 	if err := bootstrap.Run(bootstrap.Options{

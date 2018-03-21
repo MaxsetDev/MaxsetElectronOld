@@ -8,9 +8,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"maxset.io/devon/keynlp-gui/conv"
 	"maxset.io/devon/keynlp/proc"
 	"maxset.io/devon/keynlp/types"
 )
@@ -58,13 +60,19 @@ func (ele *element) Update(toolkit proc.Processor) (err error) {
 	}
 	if redo || stat.ModTime().After(ele.Modtime) {
 		ele.delete()
-		var f *os.File
-		if f, err = os.Open(ele.Original); err != nil {
+		// var f *os.File
+
+		var filecontent string
+		if filecontent, err = conv.FileToString(ele.Original); err != nil {
 			return
 		}
+
+		// var res *docconv.Response
+		// if res, err = docconv.ConvertPath(ele.Original); err != nil {
+		// 	return
+		// }
 		ele.Modtime = stat.ModTime()
-		content := toolkit.Structure(f)
-		f.Close()
+		content := toolkit.Structure(strings.NewReader(filecontent))
 
 		msbuild := types.NewMetaStringBuilder()
 		for _, sent := range content {

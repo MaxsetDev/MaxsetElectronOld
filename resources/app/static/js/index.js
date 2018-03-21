@@ -1,35 +1,31 @@
 let index = {
-    manifest: "All Searchable Files",
-    view: "select",
-    currentSearch: "",
-    init: function() {
-        // Init
-        asticode.loader.init();
-        asticode.modaler.init();
-        asticode.notifier.init();
-
-        document.addEventListener('astilectron-ready', function() {
-            // Listen
-            index.listen();
-            astilectron.sendMessage({"name": "init", "payload": ""}, function(message){
-                if (message.name === "error") {
-                    asticode.notifier.error(responce.payload);
-                    return
-                }
-                index.toSelect();
-            });            
-        });
-    },
-    emptyNode: function(n){
+    emptyNode: function(n) {
         while(n.firstChild) {
             n.removeChild(n.firstChild)
         }
+    },
+    init: function() {
+        asticode.loader.init()
+        asticode.modaler.init()
+        asticode.notifier.init()
+
+        document.addEventListener('astilectron-ready', function() {
+            index.listen()
+            //asticode.notifier.info("sending init message")
+            astilectron.sendMessage({"name": "init", "payload": ""}, function(message){
+                if (message.name === "error") {
+                    asticode.notifier.error(message.payload)
+                }
+                //asticode.notifier.info("backend init returned")
+                data.init(index.toSelect)
+            })
+        })
     },
     listen: function() {
         astilectron.onMessage(function(message) {
             switch (message.name) {
                 case "about":
-                    index.about(message.payload);
+                    //index.about(message.payload);
                     return {payload: "payload"};
                     break;
                 case "check.out.menu":
@@ -37,380 +33,326 @@ let index = {
                     break;
                 case "search.result":
                     //alert(message.payload)
-                    if (index.view === "search" && index.currentSearch === message.payload.Search) {
-                        index.addSearchResult(message.payload.Result)
+                    if (data.view === "search" && data.currentSearch === message.payload.Search) {
+                        data.addSearchResult(message.payload.Result)
                     }
                     break;
                 case "alert":
                     alert(message.payload)
                     break;
+                case "notify.error":
+                    asticode.notifier.error(message.payload);
+                    break;
+                case "notify.success":
+                    asticode.notifier.success(message.payload);
+                    break;
+                case "file.added":
+                    asticode.notifier.success("Added " +  message.payload);
+                    //data.appendFile(message.payload);
+                    break;
                 case "search.complete":
                     //alert("search complete of " + message.payload)
-                    if (index.currentSearch === message.payload){
+                    if (data.currentSearch === message.payload){
                         asticode.loader.hide()
                     }
                     break;
+                case "refresh.manifest":
+                    data.setManifest(data.manifest.name)
+                    break;
             }
         });
     },
-    submitAction: function(eve) {
-        eve.preventDefault()
-        let entry = document.getElementById("text_input").value
-        if (entry.length > 0) {
-            switch (index.view){
-                case "select":
-                    index.createManifest(entry)
-                    break;
-                case "search":
-                    index.searchManifest(entry)
-                    break;
-            }
-        }
+    changeBackColor: function(ncolor) {
+        document.getElementById("header").style.backgroundColor = ncolor;
+        document.getElementById("footer").style.backgroundColor = ncolor;
     },
-    toSelect: function() {
-        index.view = "select";
-        document.getElementById("controls").style.backgroundColor = "#2EE4E5"
+    toSelect: function(){
+        data.currentDisplay.style.display = "none"
+        data.currentDisplay = document.getElementById("display_select")
+        data.currentDisplay.style.display = "block"
+        document.getElementById("footer").style.display = "block"
+        data.view = "select";
+        index.changeBackColor("rgb(220, 252, 255)")
+        // document.getElementById("left_header").innerHTML = "Change Manifest"
 
-        document.getElementById("left_header").innerHTML = "Select Manifest"
-
-        document.getElementById("data_inputs").style.display = "block"
-        document.getElementById("text_input").placeholder = "New Manifest Name"
-        document.getElementById("text_input").value = ""
-        document.getElementById("click_input").innerHTML = "Create Manifest"
+        // document.getElementById("data_inputs").style.display = "block"
+        // document.getElementById("text_input").placeholder = "New Manifest Name"
+        // document.getElementById("text_input").value = ""
+        // document.getElementById("click_input").innerHTML = "Create Manifest"
 
         document.getElementById("gotoselect").disabled = true
         document.getElementById("gotomanifest").disabled = false
-        document.getElementById("gotosearch").disabled = false
-        // document.getElementById("gotoselect").style.display = "none"
-        // document.getElementById("gotomanifest").style.display = "inline"
-        // document.getElementById("gotosearch").style.display = "inline"
-
-        index.displayManifest()
-        index.emptyNode(document.getElementById("display"))
-
-
-        // let f = document.createElement("form")
-        // f.id = "form_controls"
-        // let input = document.createElement("input")
-        // input.type = "text"
-        // input.name = "new_manifest"
-        // input.id = "nmanifest"
-        // input.placeholder = "Create New Manifest"
-        // f.appendChild(input)
-        // let button = document.createElement("button")
-        // button.type = "button"
-        // button.innerHTML = "Create"
-        // button.addEventListener("click", index.createManifest)
-        // f.appendChild(document.createElement("br"))
-        // f.appendChild(button)
-        // let top = document.getElementById("controls")
-        // index.emptyNode(top)
-        // top.appendChild(f)
-        // let b2 = document.createElement("button")
-        // b2.type = "button"
-        // b2.innerHTML = "ToManageTMP"
-        // b2.addEventListener("click", index.toManage)
-        // f.appendChild(document.createElement("br"))
-        // f.appendChild(b2)
-        
-        asticode.loader.show();
-        index.emptyNode(document.getElementById("display"))
-        astilectron.sendMessage({"name": "get.listman", "payload": ""}, function(responce){
-            asticode.loader.hide()
-            if (responce.name === "error") {
-                asticode.notifier.error(responce.payload);
+        //document.getElementById("gotosearch").disabled = false
+    },
+    updateManifestList: function(){
+        astilectron.sendMessage({"name": "get.listman", "payload": ""}, function(message){
+            if (message.name === "error") {
+                asticode.notifier.error(message.payload)
                 return
             }
-            let header = document.createElement("h3")
-            header.innerHTML = "Choose Manifest"
-            document.getElementById("display").appendChild(header)
-            let ul = document.createElement("ul")
-            for (let manname of responce.payload) {
+            let ulist = document.getElementById("manifest_selection_list")
+            index.emptyNode(ulist)
+            for (let manname of message.payload) {
                 let item = document.createElement("li")
                 item.innerHTML = manname
                 item.addEventListener("click", function(){
-                    index.manifest = manname
-                    index.toSearch()
+                    data.setManifest(manname)
+                    index.toAddFile()
                 })
-                ul.appendChild(item)
+                ulist.appendChild(item)
             }
-            document.getElementById("display").appendChild(ul)
-        });
+            //asticode.notifier.info("manifest list updated")
+        })
     },
-    toManage: function(manname) {
-        index.view = "manage"
-        index.manifest = manname
+    updateManifest: function(){
+        document.getElementById("manifest_name_top").innerHTML = data.manifest.name
+        document.getElementById("manifest_name_bottom").innerHTML = data.manifest.name
+        let deleteb = document.getElementById("delete_manifest_b")
+        if (data.manifest.name === "All Searchable Files" || data.manifest.content.length > 0) {
+            deleteb.style.display = "none"
+        } else {
+            deleteb.style.display = "block"
+        }
+        let ulist = document.getElementById("manifest_contents")
+        index.emptyNode(ulist)
+        for (let fname of data.manifest.content) {
+            let item = document.createElement("li")
+            let n = document.createElement("span")
+            n.innerHTML = fname
+            n.addEventListener("click", index.toDocsheet.bind(true, fname))
+            item.appendChild(n)
+            let r = document.createElement("span")
+            r.innerHTML = "[X]"
+            r.style.color = "red"
+            r.addEventListener("click", data.removeFile.bind(true, fname))
+            item.appendChild(r)
+            ulist.appendChild(item)
+        }
+        //asticode.notifier.info("manifest updated")
+    },
+    deleteman: function(){
+        data.deleteManifest(data.manifest.name);
+    },
+    toAddFile: function() {
+        data.currentDisplay.style.display = "none"
+        data.currentDisplay = document.getElementById("display_addfile")
+        data.currentDisplay.style.display = "block"
+        document.getElementById("footer").style.display = "block"
+        data.view = "addfile"
+        
+        //document.getElementById("left_header").innerHTML = "Add Files"
 
-        document.getElementById("left_header").innerHTML = "Add Files"
+        index.changeBackColor("rgb(255, 243, 225)")
 
-        document.getElementById("controls").style.backgroundColor = "#F7A77F"
-
-        document.getElementById("data_inputs").style.display = "none"
-        document.getElementById("text_input").value = ""
+        //document.getElementById("data_inputs").style.display = "none"
+        //document.getElementById("text_input").value = ""
 
         document.getElementById("gotoselect").disabled = false
         document.getElementById("gotomanifest").disabled = true
-        document.getElementById("gotosearch").disabled = false
-        // document.getElementById("gotoselect").style.display = "inline"
-        // document.getElementById("gotomanifest").style.display = "none"
-        // document.getElementById("gotosearch").style.display = "inline"
-
-        // document.getElementById("manifest_name").innerHTML = index.manifest
-
-        index.displayManifest();
-        index.emptyNode(document.getElementById("display"))
-
-        // let f = document.getElementById("controls")
-        // index.emptyNode(f)
-        // let header = document.createElement("h2")
-        // header.innerHTML = index.manifest
-        // f.appendChild(header)
-        // let contentul = document.createElement("ul")
-        // contentul.id = "mancontent"
-        // f.appendChild(contentul)
-        // let backbutton = document.createElement("button")
-        // backbutton.innerHTML = "Select Manifest"
-        // backbutton.addEventListener("click", index.toSelect)
-        // f.appendChild(backbutton)
-        // let tosearch = document.createElement("button")
-        // tosearch.innerHTML = "To Search"
-        // tosearch.addEventListener("click", index.toSearch)
-        // f.appendChild(tosearch)
-
-        asticode.loader.show();       
-        astilectron.sendMessage({"name": "get.cwd", "payload": ""}, function(responce) {
-            if (responce.name === "error") {
-                asticode.notifier.error(responce.payload);
-                return
-            }
-            index.loadDir(responce.payload) 
-        });
-
-        // let f = document.getElementById("form_controls")
-        // f.innerHTML = ""
-        // let input = document.createElement("input")
-        // input.type = "file"
-        // input.accept = ".txt"
-        // input.id = "newfiles"
-        // input.multiple = true
-        // let button = document.createElement("button")
-        // button.type = "button"
-        // button.innerHTML = "Add File"
-        // button.addEventListener("click", index.addFile)
-        // f.appendChild(input)
-        // f.appendChild(document.createElement("br"))
-        // f.appendChild(button)
+        //document.getElementById("gotosearch").disabled = false
     },
-    displayManifest: function(){
-        document.getElementById("manifest_name").innerHTML = index.manifest
-        astilectron.sendMessage({"name": "get.manifest", "payload": index.manifest}, function(responce){
-            if (responce.name === "error") { 
-                asticode.notifier.error(responce.payload)
-                return
-            }
-            let ulist = document.getElementById("manifest_contents")
+    writeCWD: function(){
+        document.getElementById("cwd").innerHTML = data.cwd.name
+        document.getElementById("cwd2").innerHTML = data.cwd.name
+        {
+            let up = document.createElement("li")
+            up.innerHTML = ".."
+            up.addEventListener("click", data.setCWD.bind(true, true, ""))
+            let up2 = document.createElement("li")
+            up2.innerHTML = ".."
+            up2.addEventListener("click", data.setCWD.bind(true, true, ""))
+            let ulist = document.getElementById("addfile_navigation")
+            let ulist2 = document.getElementById("docsheet_navigation")
             index.emptyNode(ulist)
-            for (let fname of responce.payload) {
+            index.emptyNode(ulist2)
+            ulist.appendChild(up)
+            ulist2.appendChild(up2)
+            for (let folder of data.cwd.sub) {
                 let item = document.createElement("li")
-                item.innerHTML = fname
+                let item2 = document.createElement("li")
+                item.innerHTML = folder
+                item2.innerHTML = folder
+                item.addEventListener("click", data.setCWD.bind(true, false, folder))
+                item2.addEventListener("click", data.setCWD.bind(true, false, folder))
+                ulist.appendChild(item)
+                ulist2.appendChild(item2)
+            }
+        }
+        {
+            let ulist = document.getElementById("addfile_selection")
+            index.emptyNode(ulist)
+            for(let file of data.cwd.txt) {
+                let item = document.createElement("li")
+                item.innerHTML = file
+                item.addEventListener("click", data.addFile.bind(true, file))
                 ulist.appendChild(item)
             }
-            // let item = document.createElement("li")
-            // item.innerHTML = "end of list placeholder"
-            // ulist.appendChild(item)
-        });
-    },
-    createManifest: function(nname) {
-        // document.getElementById("display").innerHTML = "<h1>TODO: create manifest named " + i.value + "</h1>";
-        asticode.loader.show()
-        astilectron.sendMessage({"name": "create.manifest", "payload": nname}, function(responce){
-           asticode.loader.hide()
-            if (responce.name === "error") {
-                asticode.notifier.error(responce.payload)
-                return
-            }
-            index.toManage(responce.payload)
-        });
-    },
-    addFile: function(fname) {
-        //document.getElementById("display").innerHTML = "<h1>TODO: add " + document.getElementById("newfiles").value + " to manifest</h1>"
-        asticode.loader.show()
-        astilectron.sendMessage({"name": "add.file", "payload":{"Manifest":index.manifest, "Filename": fname}}, function(responce){
-            asticode.loader.hide()
-            if (responce.name === "error") {
-                asticode.notifier.error(responce.payload);
-                return
-            }
-            index.displayManifest();
-        });
-    },
-    loadDir: function(dir) {
-        asticode.loader.show();
-        astilectron.sendMessage({"name": "get.listdir", "payload": dir}, function(message){
-            asticode.loader.hide();
-            if (message.name === "error") {
-                asticode.notifier.error(message.payload);
-                return
-            }
-
-            let disp = document.getElementById("display")
-            
-            index.emptyNode(disp)
-
-            let header = document.createElement("h5")
-            header.innerHTML = dir
-            disp.appendChild(header)
-            {
-                //add folders on the left
-                let box = document.createElement("div")
-                box.className = "left"
-                let header = document.createElement("h3")
-                header.innerHTML = "Browse"
-                box.appendChild(header)
-                let ulist = document.createElement("ul")
-                let up = document.createElement("li")
-                up.innerHTML = ".."
-                up.addEventListener("click", function(){index.changeDir(true, "")})
-                ulist.appendChild(up)
-                for (let d of message.payload.Dir) {
-                    let item = document.createElement("li")
-                    item.innerHTML = d
-                    item.addEventListener("click", function (){index.changeDir(false, d)})
-                    ulist.appendChild(item)
-                }
-                box.appendChild(ulist)
-                disp.appendChild(box)
-            }
-
-            {
-                let box = document.createElement("div")
-                box.className = "right"
-                let header = document.createElement("h3")
-                header.innerHTML = "Select File"
-                box.appendChild(header)
-                let filelist = document.createElement("ul")
-                for (let f of message.payload.Txt) {
-                    let item = document.createElement("li")
-                    item.innerHTML = f
-                    item.addEventListener("click", index.addFile.bind(true, f))
-                    filelist.appendChild(item)
-                }
-                box.appendChild(filelist)
-                disp.appendChild(box)
-            }
-        })
-    },
-    changeDir: function (up, down) {
-        asticode.loader.show();
-        astilectron.sendMessage({"name": "set.cwd", "payload": {"Up": up, "Down": down}}, function(message){
-            if (message.name === "error") {
-                asticode.notifier.error(message.payload);
-                return
-            }
-            astilectron.sendMessage({"name": "get.cwd", "payload": ""}, function(responce) {
-                if (responce.name === "error") {
-                    asticode.notifier.error(responce.payload);
-                    return
-                }
-                index.loadDir(responce.payload)
-            })
-        })
+        }
+        //asticode.notifier.info("CWD info updated")
     },
     toSearch: function() {
-        index.view = "search"
+        data.currentDisplay.style.display = "none"
+        data.currentDisplay = document.getElementById("display_search")
+        data.currentDisplay.style.display = "block"
+        document.getElementById("footer").style.display = "none"
+        data.view = "search"
+        
+        //document.getElementById("left_header").innerHTML = "Search Manifest"
 
-        document.getElementById("left_header").innerHTML = "Search Manifest"
+        index.changeBackColor("rgb(229, 245, 216)")
 
-        document.getElementById("controls").style.backgroundColor = "#A8F27C"
-
-        document.getElementById("data_inputs").style.display = "block"
-        document.getElementById("text_input").placeholder = "Enter Search Terms"
-        document.getElementById("text_input").value = ""
-        document.getElementById("click_input").innerHTML = "Search"
+        // document.getElementById("data_inputs").style.display = "block"
+        // document.getElementById("text_input").placeholder = "Enter Search Terms"
+        // document.getElementById("text_input").value = ""
+        // document.getElementById("click_input").innerHTML = "Search"
 
         document.getElementById("gotoselect").disabled = false
         document.getElementById("gotomanifest").disabled = false
-        document.getElementById("gotosearch").disabled = true
-        // document.getElementById("gotoselect").style.display = "inline"
-        // document.getElementById("gotomanifest").style.display = "inline"
-        // document.getElementById("gotosearch").style.display = "none"
+        //document.getElementById("gotosearch").disabled = true
 
-        index.displayManifest()
-        index.emptyNode(document.getElementById("display"))
-
-
-
-        // let top = document.getElementById("controls")
-        // index.emptyNode(top)
-
-        // let header = document.createElement("h2")
-        // header.innerHTML = "Searching " + index.manifest
-        // top.appendChild(header)
-
-
-        // let f = document.createElement("form")
-        // f.id = "searchwindow"
-        // let searchterms = document.createElement("input")
-        // searchterms.id = "searchwords"
-        // searchterms.type = "text"
-        // searchterms.name = "words"
-        // searchterms.placeholder = "Find"
-        // f.appendChild(searchterms)
-        // let sbutton = document.createElement("button")
-        // sbutton.id = "searchgo"
-        // sbutton.type = "button"
-        // sbutton.innerHTML = "Search"
-        // sbutton.addEventListener("click", index.searchManifest)
-        // f.appendChild(document.createElement("br"))
-        // f.appendChild(sbutton)
-        // let backbutton = document.createElement("button")
-        // backbutton.type = "button"
-        // backbutton.id = "ToManage"
-        // backbutton.innerHTML = "Back"
-        // backbutton.addEventListener("click", index.toManage.bind(true, index.manifest))
-        // f.appendChild(backbutton)
-
-        // top.appendChild(f)
-        
+        //index.emptyNode(data.currentDisplay)
     },
-    searchManifest: function(sstr) {
-        index.currentSearch = sstr
-        index.emptyNode(document.getElementById("display"))
-        asticode.loader.show()   
-        // update Query element
-        astilectron.sendMessage({"name":"search", "payload": {"Manifest": index.manifest, "Type": "simple", "Data": sstr}}, function(responce){
-            if (responce.name === "error") {
-                asticode.loader.hide()
-                asticode.notifier.error(responce.payload)
-                return
-            }
-        });
-    },
-    addSearchResult: function(data) {
+    addSearchResult: function(result) {
         asticode.loader.hide()
+        //asticode.notifier.info("result found")
         let resultblock = document.createElement("div")
         let filename = document.createElement("h4")
-        filename.innerHTML = data.Document
+        filename.innerHTML = result.Document
         resultblock.appendChild(filename)
         let indexstring = document.createElement("h5")
-        indexstring.innerHTML = "Paragraph: " + data.Paragraph + " Sentence: " + data.Sentence
+        indexstring.innerHTML = "Paragraph: " + result.Paragraph + " Sentence: " + result.Sentence
         resultblock.appendChild(indexstring)
         let content = document.createElement("p")
-        for (i = 0; i < data.Words.length; i++) {
+        for (i = 0; i < result.Words.length; i++) {
             if (i > 0) {
                 let space = document.createElement("span")
                 space.innerHTML = " "
                 content.appendChild(space)
             }
             let sp = document.createElement("span")
-            sp.innerHTML = data.Words[i]
-            if (data.Matches.includes(i)) {
+            sp.innerHTML = result.Words[i]
+            if (result.Matches.includes(i)) {
                 sp.className = "highlight"
             }
             content.appendChild(sp)
         }
         // content.innerHTML = data.Words.join(" ")
         resultblock.appendChild(content)
-        document.getElementById("display").appendChild(resultblock)
+        document.getElementById("display_search").appendChild(resultblock)
+    },
+    goSearch: function(eve){
+        eve.preventDefault()
+        index.toSearch()
+        let entry = document.getElementById("textbox").value
+        if (entry.length > 0) {
+            document.getElementById("currentFile").innerHTML = "Select a File"
+            data.searchManifest(entry)
+        } else {
+            data.clearSearchResult()
+            document.getElementById("currentFile").innerHTML = "Enter terms above to begin your search"
+            // index.emptyNode(document.getElementById("display_search"))
+            // message = document.createElement("h3")
+            // message.innerHTML = "Enter terms above to begin your search"
+            // document.getElementById("display_search").appendChild(message)
+        }
+    },
+    createManifest: function(eve){
+        eve.preventDefault()
+        let entry = document.getElementById("new_manifest_name").value
+        if (entry.length > 0) {
+            data.createManifest(entry)
+        }
+        document.getElementById("new_manifest_name").value = ""
+    },
+    toDocsheet: function(file) {
+        data.currentDisplay.style.display = "none"
+        data.currentDisplay = document.getElementById("display_docsheet")
+        data.currentDisplay.style.display = "block"
+        document.getElementById("footer").style.display = "block"
+        data.view = "docsheet"
+        data.selectedFile = file
+        
+        // document.getElementById("left_header").innerHTML = "Export Docsheet"
+
+        document.getElementById("selectedFile").innerHTML = file
+
+        index.changeBackColor("rgb(255, 235, 252)")
+
+        // document.getElementById("data_inputs").style.display = "none"
+        // document.getElementById("text_input").value = ""
+
+        document.getElementById("gotoselect").disabled = false
+        document.getElementById("gotomanifest").disabled = false
+        //document.getElementById("gotosearch").disabled = false
+
+        document.getElementById("docsheet_name").value = ""
+    },
+    refreshSearch: function(updatemenu) {
+        if (updatemenu) {
+            let menu = document.getElementById("matchedFiles")
+            index.emptyNode(menu)
+            for (let k in data.searchResult) { if (data.searchResult.hasOwnProperty(k)) {
+                let item = document.createElement("li")
+                item.innerHTML = data.searchResult[k].name
+                item.addEventListener("click", data.setSearchDisplay.bind(true, k, 0, data.defaultsize))
+                menu.appendChild(item)
+            }}
+        }
+        index.emptyNode(document.getElementById("resultdisplay"))
+        if (data.searchDisplay.file.length > 0) {
+            document.getElementById("currentFile").innerHTML = data.searchDisplay.file
+            document.getElementById("firstindex").innerHTML = data.searchDisplay.first + 1
+            document.getElementById("prevResults").disabled = data.searchDisplay.first == 0
+            if (data.searchDisplay.last >= data.searchResult[data.searchDisplay.file].matches.length) {
+                document.getElementById("lastindex").innerHTML = data.searchResult[data.searchDisplay.file].matches.length
+                document.getElementById("nextResults").disabled = true
+            } else {
+                document.getElementById("lastindex").innerHTML = data.searchDisplay.last
+                document.getElementById("nextResults").disabled = false
+            }
+            document.getElementById("fullresultcount").innerHTML = data.searchResult[data.searchDisplay.file].matches.length
+            for(let i = data.searchDisplay.first; i < data.searchDisplay.last && i < data.searchResult[data.searchDisplay.file].matches.length; i++){
+                index.appendSearchResult(data.searchResult[data.searchDisplay.file].matches[i])
+            }
+        } else {
+            document.getElementById("currentFile").innerHTML = "Select a File"
+            document.getElementById("firstindex").innerHTML = 0
+            document.getElementById("lastindex").innerHTML = 0
+            document.getElementById("fullresultcount").innerHTML = 0
+            document.getElementById("prevResults").disabled = true
+            document.getElementById("nextResults").disabled = true
+        }
+    },
+    appendSearchResult: function(result) {
+        let block = document.createElement("div")
+        let indexstring = document.createElement("h5")
+        indexstring.innerHTML = "Paragraph: " + result.paragraph + " Sentence: " + result.sentence
+        block.appendChild(indexstring)
+        let content = document.createElement("p")
+        for (i = 0; i < result.words.length; i++) {
+            if (i > 0) {
+                let space = document.createElement("span")
+                space.innerHTML = " "
+                content.appendChild(space)
+            }
+            let sp = document.createElement("span")
+            sp.innerHTML = result.words[i]
+            if (result.matches.includes(i)) {
+                sp.className = "highlight"
+            }
+            content.appendChild(sp)
+        }
+        block.appendChild(content)
+        document.getElementById("resultdisplay").appendChild(block)
+    },
+    searchPrev: function() {
+        data.setSearchDisplay(data.searchDisplay.file, 
+            data.searchDisplay.first - data.defaultsize, 
+            data.searchDisplay.last - data.defaultsize)
+    },
+    searchNext: function() {
+        data.setSearchDisplay(data.searchDisplay.file, 
+            data.searchDisplay.first + data.defaultsize, 
+            data.searchDisplay.last + data.defaultsize)
     }
-};
+}
