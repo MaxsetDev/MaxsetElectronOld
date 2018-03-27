@@ -122,3 +122,13 @@ input.search_textbox {
 h3#currentFile {
     text-align: center;
 }
+
+.center {
+    text-align: center;
+}
+
+.toRead {
+    cursor: pointer;
+    text-decoration: underline;
+    color: #50ba12
+}

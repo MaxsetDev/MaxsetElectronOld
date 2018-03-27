@@ -8,7 +8,7 @@ import (
 )
 
 func TestPdfConversion(t *testing.T) {
-	f, errr := os.Open("/home/calld/go/src/maxset.io/devon/pdftotexttest/signedDocument-maplepointe.pdf")
+	f, errr := os.Open("/home/calld/go/src/maxset.io/devon/pdftotexttest/Material List.pdf")
 	if errr != nil {
 		t.Fatal(errr.Error())
 	}

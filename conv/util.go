@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	pdfcontent "github.com/unidoc/unidoc/pdf/contentstream"
+	"github.com/unidoc/unidoc/pdf/extractor"
 	pdf "github.com/unidoc/unidoc/pdf/model"
 )
 
@@ -62,34 +62,42 @@ func ExtractPDFtoString(r io.ReadSeeker) (string, error) {
 			return "", err
 		}
 
-		contentStreams, err := page.GetContentStreams()
+		ex, err := extractor.New(page)
 		if err != nil {
 			return "", err
 		}
 
-		for _, cstream := range contentStreams {
-			var t string
-			if t, err = pdfcontent.NewContentStreamParser(cstream).ExtractText(); err != nil {
-				return "", err
-			}
-			// sb.WriteString("STREAM:\n")
-			// sb.WriteString(cstream)
-			// sb.WriteString("\nCONVERTED:\n")
-			sb.WriteString(t)
-			sb.WriteString("\n")
-			//pageContentStrbuild.WriteByte('\n')
+		text, err := ex.ExtractText()
+		if err != nil {
+			return "", err
 		}
-		//pageContentStr := pageContentStrbuild.String()
 
-		// cstreamParser := pdfcontent.NewContentStreamParser(pageContentStr)
-		// txt, err := cstreamParser.ExtractText()
-		// if err != nil {
-		// 	return "", err
-		// }
-
-		// sb.WriteString(txt)
+		sb.WriteString(text)
 		sb.WriteString("\n\n")
 	}
 
 	return sb.String(), nil
+}
+
+func StringHTMLEscape(pre string) string {
+	var post strings.Builder
+	for _, char := range pre {
+		switch char {
+		case '<':
+			post.WriteString("&lt;")
+		case '>':
+			post.WriteString("&gt;")
+		case '"':
+			post.WriteString("&quot;")
+		case '&':
+			post.WriteString("&amp;")
+		case '’':
+			fallthrough
+		case '\'':
+			post.WriteString("&#39")
+		default:
+			post.WriteRune(char)
+		}
+	}
+	return post.String()
 }

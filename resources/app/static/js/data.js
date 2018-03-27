@@ -47,7 +47,7 @@ let data = {
     addFile: function(file) {
         asticode.loader.show()
         astilectron.sendMessage({"name": "add.file", "payload":{"Manifest":data.manifest.name, "Filename": file}}, function(responce){
-            asticode.loader.hide()
+            //asticode.loader.hide()
             if (responce.name === "error") {
                 asticode.notifier.error(responce.payload);
                 return
@@ -85,7 +85,7 @@ let data = {
                 "name": "remove.manifest",
                 "payload": mname
             },
-            function(message){
+            function(message) {
                 asticode.loader.hide()
                 if (message.name === "error") {
                     asticode.notifier.error(message.payload);
@@ -105,7 +105,7 @@ let data = {
                 "Directory": data.cwd.path}
             }, 
             function(message){
-                asticode.loader.hide()
+                //asticode.loader.hide()
                 if (message.name === "error") {
                     asticode.notifier.error(message.payload);
                     return
@@ -214,7 +214,9 @@ let data = {
                 data.searchResult[result.Document] = {
                     name: result.Name,
                     matches : [{
-                        words: result.Words,
+                        words: result.Words.map(function(wrd){
+                            return wrd.replace(/[^ -~]+/g, "&#39;")
+                        }),
                         paragraph: result.Paragraph,
                         sentence: result.Sentence,
                         matches: result.Matches
@@ -224,7 +226,9 @@ let data = {
             }
         } else {
             data.searchResult[result.Document].matches.push({
-                words: result.Words,
+                words: result.Words.map(function(wrd){
+                    return wrd.replace(/[^ -~]+/g, "&#39;")
+                }),
                 paragraph: result.Paragraph,
                 sentence: result.Sentence,
                 matches: result.Matches
@@ -241,5 +245,41 @@ let data = {
         }
         data.searchDisplay.last = last
         index.refreshSearch(false)
+    },
+    fileinfo: {
+        focus: "",
+        start: 0,
+        end: 0,
+        total: 0,
+        content: ""
+    },
+    updateFileinfo: function(file, start) {
+        data.fileinfo.focus = file
+        asticode.loader.show()
+        astilectron.sendMessage({
+            "name":"get.file.content", 
+            "payload": {
+                "File": file,
+                "Start": start,
+                "End": start + 10
+            }}, 
+            function(responce){
+                asticode.loader.hide()
+                if (responce.name === "error") {
+                    asticode.notifier.error(responce.payload);
+                    return
+                }
+                data.fileinfo.start = responce.payload.Start
+                if (data.fileinfo.start < 0) {
+                    data.fileinfo.start = 0
+                }
+                data.fileinfo.end = responce.payload.End
+                data.fileinfo.total = responce.payload.Total
+                if (data.fileinfo.end > data.fileinfo.total) {
+                    data.fileinfo.end = data.fileinfo.total
+                }
+                data.fileinfo.content = responce.payload.Content.replace(/[^ -~]+/g, "&#39;")
+                index.updateFileinfo()
+            })
     }
 }

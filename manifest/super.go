@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"maxset.io/devon/keynlp-gui/conv"
+
 	"maxset.io/devon/keynlp/proc"
 	"maxset.io/devon/keynlp/types"
 	"maxset.io/devon/knsearch/query"
@@ -174,7 +176,9 @@ func (par *Parent) Search(q query.Query, b query.Block, s uint, matchcallback fu
 func joinPhrases(s types.TaggedSent) []string {
 	result := make([]string, 0, len(s.Phrases))
 	for _, phrase := range s.Phrases {
-		result = append(result, phrase...)
+		for _, wrd := range phrase {
+			result = append(result, conv.StringHTMLEscape(wrd))
+		}
 	}
 	return result
 }

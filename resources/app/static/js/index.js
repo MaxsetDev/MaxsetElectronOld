@@ -119,7 +119,7 @@ let index = {
             let item = document.createElement("li")
             let n = document.createElement("span")
             n.innerHTML = fname
-            n.addEventListener("click", index.toDocsheet.bind(true, fname))
+            n.addEventListener("click", index.tofileinfo.bind(true, fname, 0))
             item.appendChild(n)
             let r = document.createElement("span")
             r.innerHTML = "[X]"
@@ -312,7 +312,7 @@ let index = {
             }
             document.getElementById("fullresultcount").innerHTML = data.searchResult[data.searchDisplay.file].matches.length
             for(let i = data.searchDisplay.first; i < data.searchDisplay.last && i < data.searchResult[data.searchDisplay.file].matches.length; i++){
-                index.appendSearchResult(data.searchResult[data.searchDisplay.file].matches[i])
+                index.appendSearchResult(data.searchDisplay.file, data.searchResult[data.searchDisplay.file].matches[i])
             }
         } else {
             document.getElementById("currentFile").innerHTML = "Select a File"
@@ -323,10 +323,13 @@ let index = {
             document.getElementById("nextResults").disabled = true
         }
     },
-    appendSearchResult: function(result) {
+    appendSearchResult: function(fname, result) {
         let block = document.createElement("div")
         let indexstring = document.createElement("h5")
         indexstring.innerHTML = "Paragraph: " + result.paragraph + " Sentence: " + result.sentence
+        let base = result.sentence - (result.sentence % 10)
+        indexstring.addEventListener("click", index.tofileinfo.bind(true, fname, base))
+        indexstring.className = "toRead"
         block.appendChild(indexstring)
         let content = document.createElement("p")
         for (i = 0; i < result.words.length; i++) {
@@ -354,5 +357,43 @@ let index = {
         data.setSearchDisplay(data.searchDisplay.file, 
             data.searchDisplay.first + data.defaultsize, 
             data.searchDisplay.last + data.defaultsize)
+    },
+    tofileinfo: function(file, start) {
+        let end = start + 10
+        data.currentDisplay.style.display = "none"
+        data.currentDisplay = document.getElementById("display_fileinfo")
+        data.currentDisplay.style.display = "block"
+        document.getElementById("footer").style.display = "block"
+        data.view = "fileinfo"
+        data.updateFileinfo(file, start)
+        
+        // document.getElementById("left_header").innerHTML = "Export Docsheet"
+
+        index.changeBackColor("rgb(179, 179, 255)")
+
+        // document.getElementById("data_inputs").style.display = "none"
+        // document.getElementById("text_input").value = ""
+
+        document.getElementById("gotoselect").disabled = false
+        document.getElementById("gotomanifest").disabled = false
+        //document.getElementById("gotosearch").disabled = false
+    },
+    updateFileinfo: function() {
+        document.getElementById("fileinfo_name").innerHTML = data.fileinfo.focus
+        document.getElementById("fileinfo_start").innerHTML = data.fileinfo.start + 1
+        document.getElementById("fileinfo_prev").disabled = data.fileinfo.start <= 0
+        document.getElementById("fileinfo_end").innerHTML = data.fileinfo.end
+        document.getElementById("fileinfo_next").disabled = data.fileinfo.end >= data.fileinfo.total
+        document.getElementById("fileinfo_total").innerHTML = data.fileinfo.total
+        document.getElementById("fileinfo_content").innerHTML = data.fileinfo.content
+    },
+    exportDocSheetButton: function() {
+        index.toDocsheet(data.fileinfo.focus)
+    },
+    fileinfoprev: function() {
+        data.updateFileinfo(data.fileinfo.focus, data.fileinfo.start - 10)
+    },
+    fileinfonext: function() {
+        data.updateFileinfo(data.fileinfo.focus, data.fileinfo.start + 10)
     }
 }

@@ -12,6 +12,7 @@ import (
 	"maxset.io/devon/keynlp-gui/manifest"
 	"maxset.io/devon/keynlp/types"
 	"maxset.io/devon/docsheet/tagtorow"
+	"maxset.io/devon/keynlp-gui/conv"
 
 	bootstrap "github.com/asticode/go-astilectron-bootstrap"
 	"github.com/asticode/go-astilectron"
@@ -65,9 +66,9 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 	case "init":
 		if err = manifest.Init(); err != nil {
 			payload = err.Error()
-			go manifest.Save()
 			return
 		}
+		go manifest.Save()
 		//bootstrap.SendMessage(w, "alert", "backend init complete")
 	case "get.listman":
 		var names = make([]string, 0, len(manifest.ManifestList)+1)
@@ -217,6 +218,51 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			delete(manifest.ManifestList, manif)
 		}
 		go manifest.Save()
+	case "get.file.content":
+		var qry struct {
+			File string
+			Start uint
+			End uint
+		}
+		var rpnc struct {
+			Start uint
+			End uint
+			Total uint
+			Content string
+		}
+		if err = json.Unmarshal(m.Payload, &qry); err != nil {
+			payload = err.Error()
+			return
+		}
+		rpnc.Start = qry.Start
+		rpnc.End = qry.End
+		var sb strings.Builder
+		var sents []types.TaggedSent
+		if sents, err = manifest.Super.GetTagged(qry.File); err != nil {
+			payload = err.Error()
+			return
+		}
+		var prevPara int
+		prevPara = -1
+		for _, sent := range sents {
+			if sent.Position >= qry.Start && sent.Position < qry.End {
+				if prevPara > -1 && sent.Paragraph != uint(prevPara) {
+					sb.WriteString("<br><br>")
+				}
+				prevPara = int(sent.Paragraph)
+				for _, phrs := range sent.Phrases {
+					for _, wrd := range phrs {
+						sb.WriteString(conv.StringHTMLEscape(wrd))
+						sb.WriteByte(' ')
+					}
+				}				
+			}
+			if sent.Position > rpnc.Total {
+				rpnc.Total = sent.Position
+			}
+		}
+		rpnc.Content = sb.String()
+		payload = rpnc
 	}
 	return 
 }

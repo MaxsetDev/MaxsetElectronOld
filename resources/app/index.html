@@ -67,6 +67,17 @@
                 </form>
             </div>
         </div>
+        <div class="middle" id="display_fileinfo" style="display:none">
+            <h3 class="center" id="fileinfo_name">Select File</h3>
+            <p class="center">
+                <button onclick="index.exportDocSheetButton();">Export DocSheet</button>
+                <br>
+                <button id="fileinfo_prev" onclick="index.fileinfoprev()">prev</button>
+                <span id="fileinfo_start">0</span> to <span id="fileinfo_end">0</span> of <span id="fileinfo_total">0</span>
+                <button id="fileinfo_next" onclick="index.fileinfonext()">next</button>
+            </p>
+            <p id="fileinfo_content"></p>
+        </div>
         <div class="result" id="display_search" style="display:none">
             <div class="fileselect" id="resultmenu">
                 <h3>Matched Files</h3>
