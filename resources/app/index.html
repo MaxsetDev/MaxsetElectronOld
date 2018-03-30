@@ -17,13 +17,10 @@
             <form id="search_form">
                 <input class="search_textbox" type="text" id="textbox" placeholder="Enter Search Terms"/>
                 <br>
-                <button class="searchButton" id="searchButton" type="submit" onclick="index.goSearch(event);">Search</button>
-                <label> : <span id="manifest_name_top">All Searchable Files</span></label>
+                <button class="interface" id="searchButton" type="submit" onclick="index.goSearch(event);">Search<strong>:</strong> <span id="manifest_name_top">All Searchable Files</span></button>
+                <button class="interface" id="gotoselect" type="button" onclick="index.toSelect();" disabled>Change Fileset</button>
+                <button class="interface" id="gotomanifest" type="button" onclick="index.toAddFile();">Add Files</button>
             </form>
-        </div>
-        <div class="mode_select">
-            <button id="gotoselect" type="button" onclick="index.toSelect();" disabled>Change Fileset</button>
-            <button id="gotomanifest" type="button" onclick="index.toAddFile();">Add Files</button>
         </div>
     </div>
     <div class="content">
@@ -42,8 +39,7 @@
         </div>
         <div class="middle" id="display_addfile" style="display:none">
             <div class="left">
-                <h3>Browse</h3>
-                <h5 id="cwd">unknown</h5>
+                <h3>Browse <em id="cwd">unknown</em></h3>
                 <ul id="addfile_navigation"></ul>
             </div>
             <div class="right">
@@ -54,8 +50,7 @@
         </div>
         <div class="middle" id="display_docsheet" style="display:none">
             <div class="left">
-                <h3>Browse</h3>
-                <h5 id="cwd2">unknown</h5>
+                <h3>Browse <em id="cwd2">unknown</em></h3>
                 <ul id="docsheet_navigation"></ul>
             </div>
             <div class="right">
@@ -85,7 +80,7 @@
             </div>
             <div class="searchResults" id="resultoutput">
                 <h3 id="currentFile">Select a File</h3>
-                <p class="searchstat">
+                <p class="searchstat" id="searchnavigation">
                     <button id="prevResults" onclick="index.searchPrev()" disabled>prev</button>
                     <span id="firstindex">0</span> to <span id="lastindex">15</span> of <span id="fullresultcount">0</span>
                     <button id="nextResults" onclick="index.searchNext()" disabled>next</button>
@@ -96,6 +91,7 @@
         <div class="bottom" id="footer">
             <h3>Fileset <em id="manifest_name_bottom">All Searchable Files</em> contents:</h3>
             <button id="delete_manifest_b" type="button" onclick="index.deleteman()" style="display:none;">Delete This Fileset</button>
+            <button id="clearManifest" type="button" onclick="index.clearman()" style="display:none;">Clear Fileset</button>
             <ul id="manifest_contents"></ul>
         </div>
     </div>

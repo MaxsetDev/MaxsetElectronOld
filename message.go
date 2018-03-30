@@ -208,6 +208,24 @@ func handleMessages(_ *astilectron.Window, m bootstrap.MessageIn) (payload inter
 			return
 		}
 		go manifest.Save()
+	case "remove.all":
+		var manif string
+		if err = json.Unmarshal(m.Payload, &manif); err != nil {
+			payload = err.Error()
+			return
+		}
+		var m manifest.Manifest
+		if m, err = resolveManifest(manif); err != nil {
+			payload = err.Error()
+			return
+		}
+		for _, fname := range m.ListFiles() {
+			if err = m.RemoveFile(fname); err != nil {
+				bootstrap.SendMessage(w, "notify.error", 
+					fmt.Sprintf("deleting %s: %s", fname, err.Error()))
+			}
+		}
+		go manifest.Save()
 	case "remove.manifest":
 		var manif string
 		if err = json.Unmarshal(m.Payload, &manif); err != nil {

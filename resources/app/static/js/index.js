@@ -42,6 +42,7 @@ let index = {
                     break;
                 case "notify.error":
                     asticode.notifier.error(message.payload);
+                    index.toSelect();
                     break;
                 case "notify.success":
                     asticode.notifier.success(message.payload);
@@ -108,10 +109,16 @@ let index = {
         document.getElementById("manifest_name_top").innerHTML = data.manifest.name
         document.getElementById("manifest_name_bottom").innerHTML = data.manifest.name
         let deleteb = document.getElementById("delete_manifest_b")
+        let clearb = document.getElementById("clearManifest")
         if (data.manifest.name === "All Searchable Files" || data.manifest.content.length > 0) {
             deleteb.style.display = "none"
         } else {
             deleteb.style.display = "block"
+        }
+        if (data.manifest.content.length > 0) {
+            clearb.style.display = "block"
+        } else {
+            clearb.style.display = "none"
         }
         let ulist = document.getElementById("manifest_contents")
         index.emptyNode(ulist)
@@ -120,18 +127,21 @@ let index = {
             let n = document.createElement("span")
             n.innerHTML = fname
             n.addEventListener("click", index.tofileinfo.bind(true, fname, 0))
-            item.appendChild(n)
             let r = document.createElement("span")
             r.innerHTML = "[X]"
             r.style.color = "red"
             r.addEventListener("click", data.removeFile.bind(true, fname))
             item.appendChild(r)
+            item.appendChild(n)
             ulist.appendChild(item)
         }
         //asticode.notifier.info("manifest updated")
     },
     deleteman: function(){
         data.deleteManifest(data.manifest.name);
+    },
+    clearman: function() {
+        data.clearManifest(data.manifest.name);
     },
     toAddFile: function() {
         data.currentDisplay.style.display = "none"
@@ -300,6 +310,7 @@ let index = {
         }
         index.emptyNode(document.getElementById("resultdisplay"))
         if (data.searchDisplay.file.length > 0) {
+            document.getElementById("searchnavigation").style.display = "block"
             document.getElementById("currentFile").innerHTML = data.searchDisplay.file
             document.getElementById("firstindex").innerHTML = data.searchDisplay.first + 1
             document.getElementById("prevResults").disabled = data.searchDisplay.first == 0
@@ -316,6 +327,7 @@ let index = {
             }
         } else {
             document.getElementById("currentFile").innerHTML = "Select a File"
+            document.getElementById("searchnavigation").style.display = "none"
             document.getElementById("firstindex").innerHTML = 0
             document.getElementById("lastindex").innerHTML = 0
             document.getElementById("fullresultcount").innerHTML = 0

@@ -9,6 +9,16 @@ html, body {
     margin: 0;
     width: 100%;
     overflow: hidden;
+    font-family: sans-serif;
+}
+
+h3 {
+    margin: 2px;
+    margin-top: 16px;
+}
+
+ul {
+    list-style-type: none;
 }
 
 li {
@@ -27,7 +37,7 @@ span.highlight {
     overflow: auto;
     padding-left: 10%;
     padding-right: 10%;
-    padding-top: 2%;
+    padding-top: 5px;
 }
 
 img.logosize {
@@ -36,20 +46,40 @@ img.logosize {
 }
 
 .logo {
-    height: 30%;
+    height: 25%;
 }
 
 /* .search {
     height: 40%;
 } */
 
-button.searchButton {
-    display: inline;
+button {
+    background-color: #e7e7e7;
+    color: black;
+    border: none;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 8px 12px;
+}
+
+button.interface {
+    background-color: #e7e7e7;
+    color: black;
+    border: none;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    padding: 15px 32px;
+    margin: 20px 18px 5px 0px;
 }
 
 input.search_textbox {
     font-size: 16px;
+    line-height: 1.8;
     width: 100%;
+    box-shadow: 1px 4px 3px 0 rgba(0, 0, 0, 0.2)
 }
 
 /* .mode_select {

@@ -97,6 +97,24 @@ let data = {
             }
         )
     },
+    clearManifest: function(mname) {
+        asticode.loader.show()
+        astilectron.sendMessage(
+            {
+                "name": "remove.all",
+                "payload": mname
+            },
+            function(message) {
+                asticode.loader.hide()
+                if (message.name === "error") {
+                    asticode.notifier.error(message.payload);
+                    return
+                }
+                data.setManifest(mname)
+                index.toAddFile()
+            }
+        )
+    },
     addAllFiles: function() {
         asticode.loader.show()
         astilectron.sendMessage({"name": "add.all", 
