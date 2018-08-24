@@ -1,14 +1,32 @@
 let data = {
-    init: function(callb) {
+    mode: "",
+    init: function(callb, lic) {
         //alert("data init begin")
         //asticode.notifier.info("data init begin")
+      if (lic.Valid) {
+        document.getElementById("license").style.display = "none";
+        document.getElementById("header").style.display = "block";
+        document.getElementById("contentBox").style.display = "block";
+        data.mode = lic.Class
+        if (data.mode != "Complete") {
+            document.getElementById("fileinfo_docsheet").style.display = "none"
+        }
+        if (data.mode == "Demo") {
+            document.getElementById("select_all").style.display = "none"
+        }
         data.setManifest("All Searchable Files")
         data.updateCWD()
-        index.updateManifestList()   
-        data.currentDisplay = document.getElementById("display_select")     
+        index.updateManifestList()
+        data.currentDisplay = document.getElementById("display_select")
         callb();
+      } else {
+        document.getElementById("license").style.display = "block";
+        document.getElementById("header").style.display = "none";
+        document.getElementById("contentBox").style.display = "none";
+      }
         //asticode.notifier.info("data init end")
     },
+    searchmode: "simple",
     manifest: {
         name: "All Searchable Files",
         content: []
@@ -45,11 +63,12 @@ let data = {
         index.updateManifest()
     },
     addFile: function(file) {
-        asticode.loader.show()
+        asticode.loader.show();
         astilectron.sendMessage({"name": "add.file", "payload":{"Manifest":data.manifest.name, "Filename": file}}, function(responce){
             //asticode.loader.hide()
             if (responce.name === "error") {
                 asticode.notifier.error(responce.payload);
+                asticode.loader.hide();
                 return
             }
             //data.setManifest(data.manifest.name)
@@ -59,7 +78,7 @@ let data = {
         asticode.loader.show()
         astilectron.sendMessage(
             {
-                "name": "remove.file", 
+                "name": "remove.file",
                 "payload":{
                     "Manifest": data.manifest.name,
                     "File": file
@@ -117,11 +136,11 @@ let data = {
     },
     addAllFiles: function() {
         asticode.loader.show()
-        astilectron.sendMessage({"name": "add.all", 
+        astilectron.sendMessage({"name": "add.all",
             "payload":{
                 "Manifest": data.manifest.name,
                 "Directory": data.cwd.path}
-            }, 
+            },
             function(message){
                 //asticode.loader.hide()
                 if (message.name === "error") {
@@ -138,16 +157,16 @@ let data = {
         data.currentSearch = searchterms
         //index.emptyNode(document.getElementById("display_search"))
         data.clearSearchResult()
-        asticode.loader.show()   
+        asticode.loader.show()
         // update Query element
         astilectron.sendMessage({
-            "name":"search", 
+            "name":"search",
             "payload": {
-                "Manifest": data.manifest.name, 
-                "Type": "simple", 
+                "Manifest": data.manifest.name,
+                "Type": "simple",
                 "Data": data.currentSearch
             }
-        }, 
+        },
         function(responce){
             if (responce.name === "error") {
                 asticode.loader.hide()
@@ -155,6 +174,25 @@ let data = {
                 return
             }
         })
+    },
+    advSearchManifest(advsearch) {
+      data.currentSearch = advsearch.All.Text + advsearch.Any.Text + advsearch.Not.Text
+      data.clearSearchResult()
+      asticode.loader.show()
+      astilectron.sendMessage({
+        "name": "search.advanced",
+        "payload": {
+          "Manifest": data.manifest.name,
+          "Query": advsearch
+        }
+      },
+      function(responce){
+        if (responce.name === "error") {
+          asticode.loader.hide()
+          asticode.notifier.error(responce.payload)
+          return
+        }
+      })
     },
     view: "select",
     cwd: {
@@ -275,12 +313,12 @@ let data = {
         data.fileinfo.focus = file
         asticode.loader.show()
         astilectron.sendMessage({
-            "name":"get.file.content", 
+            "name":"get.file.content",
             "payload": {
                 "File": file,
                 "Start": start,
                 "End": start + 10
-            }}, 
+            }},
             function(responce){
                 asticode.loader.hide()
                 if (responce.name === "error") {
@@ -299,5 +337,27 @@ let data = {
                 data.fileinfo.content = responce.payload.Content.replace(/[^ -~]+/g, "&#39;")
                 index.updateFileinfo()
             })
+    },
+    ExportSearch: function(eve) {
+      eve.preventDefault()
+      asticode.loader.show()
+      if (document.getElementById("export_name").value.length > 0) {
+        let exporttype = "txt"
+        if (document.getElementById("export_type_csv").checked) {
+          exporttype = "csv"
+        }
+        let fname = document.getElementById("export_name").value + "." + exporttype
+        astilectron.sendMessage({"name": "export.search", "payload": {"Results": data.searchResult, "Saveto": fname, "Type": exporttype}}, function(message){
+            asticode.loader.hide()
+            if (message.name === "error") {
+                asticode.notifier.error(message.payload)
+                return
+            }
+            asticode.notifier.info("exported to " + fname)
+            index.toSearch()
+        })
+      } else {
+        asticode.notifier.error("please provide file name")
+      }
     }
 }

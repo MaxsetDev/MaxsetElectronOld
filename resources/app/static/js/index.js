@@ -1,3 +1,29 @@
+function takeOverConsole(){
+    var console = window.console
+    if (!console) return
+    function intercept(method){
+        var original = console[method]
+        console[method] = function(){
+            astilectron.sendMessage({"name":"error.log", "payload": arguments}, function(message){
+              if (message.name === "error") {
+                asticode.notifier.error(message.payload)
+              }
+            })
+            if (original.apply){
+                // Do this for normal browsers
+                original.apply(console, arguments)
+            }else{
+                // Do this for IE
+                var message = Array.prototype.slice.apply(arguments).join(' ')
+                original(message)
+            }
+        }
+    }
+    var methods = ['log', 'warn', 'error']
+    for (var i = 0; i < methods.length; i++)
+        intercept(methods[i])
+}
+
 let index = {
     emptyNode: function(n) {
         while(n.firstChild) {
@@ -5,6 +31,7 @@ let index = {
         }
     },
     init: function() {
+        takeOverConsole()
         asticode.loader.init()
         asticode.modaler.init()
         asticode.notifier.init()
@@ -17,12 +44,13 @@ let index = {
                     asticode.notifier.error(message.payload)
                 }
                 //asticode.notifier.info("backend init returned")
-                data.init(index.toSelect)
+                data.init(index.toSelect, message.payload)
             })
         })
     },
     listen: function() {
         astilectron.onMessage(function(message) {
+            //asticode.notifier.info(message.name)
             switch (message.name) {
                 case "about":
                     //index.about(message.payload);
@@ -37,6 +65,10 @@ let index = {
                         data.addSearchResult(message.payload.Result)
                     }
                     break;
+                case "search.complete":
+                    //asticode.notifier.info("reveal button")
+                    document.getElementById("exportsearch").style.display = "block"
+                    break;
                 case "alert":
                     alert(message.payload)
                     break;
@@ -46,6 +78,9 @@ let index = {
                     break;
                 case "notify.success":
                     asticode.notifier.success(message.payload);
+                    break;
+                case "notify.log":
+                    asticode.notifier.info(message.payload);
                     break;
                 case "file.added":
                     asticode.notifier.success("Added " +  message.payload);
@@ -67,6 +102,15 @@ let index = {
         document.getElementById("header").style.backgroundColor = ncolor;
         document.getElementById("footer").style.backgroundColor = ncolor;
     },
+    displayBackButton: function(){
+      if (data.currentSearch.length > 0) {
+        document.getElementById("back_to_search_adv").style.display = "inline"
+        document.getElementById("back_to_search").style.display = "inline"
+      } else {
+        document.getElementById("back_to_search_adv").style.display = "none"
+        document.getElementById("back_to_search").style.display = "none"
+      }
+    },
     toSelect: function(){
         data.currentDisplay.style.display = "none"
         data.currentDisplay = document.getElementById("display_select")
@@ -83,6 +127,9 @@ let index = {
 
         document.getElementById("gotoselect").disabled = true
         document.getElementById("gotomanifest").disabled = false
+        document.getElementById("advgotoselect").disabled = true
+        document.getElementById("advgotomanifest").disabled = false
+        index.displayBackButton()
         //document.getElementById("gotosearch").disabled = false
     },
     updateManifestList: function(){
@@ -107,6 +154,7 @@ let index = {
     },
     updateManifest: function(){
         document.getElementById("manifest_name_top").innerHTML = data.manifest.name
+        document.getElementById("manifest_name_top_adv").innerHTML = data.manifest.name
         document.getElementById("manifest_name_bottom").innerHTML = data.manifest.name
         let deleteb = document.getElementById("delete_manifest_b")
         let clearb = document.getElementById("clearManifest")
@@ -149,7 +197,7 @@ let index = {
         data.currentDisplay.style.display = "block"
         document.getElementById("footer").style.display = "block"
         data.view = "addfile"
-        
+
         //document.getElementById("left_header").innerHTML = "Add Files"
 
         index.changeBackColor("rgb(255, 243, 225)")
@@ -159,6 +207,9 @@ let index = {
 
         document.getElementById("gotoselect").disabled = false
         document.getElementById("gotomanifest").disabled = true
+        document.getElementById("advgotoselect").disabled = false
+        document.getElementById("advgotomanifest").disabled = true
+        index.displayBackButton()
         //document.getElementById("gotosearch").disabled = false
     },
     writeCWD: function(){
@@ -166,10 +217,10 @@ let index = {
         document.getElementById("cwd2").innerHTML = data.cwd.name
         {
             let up = document.createElement("li")
-            up.innerHTML = ".."
+            up.innerHTML = '<img class="folderup" src="static/images/FolderWithArrow.png"/>'
             up.addEventListener("click", data.setCWD.bind(true, true, ""))
             let up2 = document.createElement("li")
-            up2.innerHTML = ".."
+            up2.innerHTML = '<img class="folderup" src="static/images/FolderWithArrow.png"/>'
             up2.addEventListener("click", data.setCWD.bind(true, true, ""))
             let ulist = document.getElementById("addfile_navigation")
             let ulist2 = document.getElementById("docsheet_navigation")
@@ -206,7 +257,8 @@ let index = {
         data.currentDisplay.style.display = "block"
         document.getElementById("footer").style.display = "none"
         data.view = "search"
-        
+        //console.log("switched to search display.")
+
         //document.getElementById("left_header").innerHTML = "Search Manifest"
 
         index.changeBackColor("rgb(229, 245, 216)")
@@ -218,6 +270,10 @@ let index = {
 
         document.getElementById("gotoselect").disabled = false
         document.getElementById("gotomanifest").disabled = false
+        document.getElementById("advgotoselect").disabled = false
+        document.getElementById("advgotomanifest").disabled = false
+        index.displayBackButton()
+        //console.log("completed switch to search display.")
         //document.getElementById("gotosearch").disabled = true
 
         //index.emptyNode(data.currentDisplay)
@@ -253,6 +309,7 @@ let index = {
     goSearch: function(eve){
         eve.preventDefault()
         index.toSearch()
+        document.getElementById("exportsearch").style.display = "none"
         let entry = document.getElementById("textbox").value
         if (entry.length > 0) {
             document.getElementById("currentFile").innerHTML = "Select a File"
@@ -265,6 +322,47 @@ let index = {
             // message.innerHTML = "Enter terms above to begin your search"
             // document.getElementById("display_search").appendChild(message)
         }
+    },
+    goAdvSearch: function(eve){
+      eve.preventDefault()
+      index.toSearch()
+      document.getElementById("exportsearch").style.display = "none"
+      let searchQuery = {
+        Block: {
+          Unit: document.getElementById("searchBlockType").value,
+          Amount: parseInt(document.getElementById("blockamount").value)
+        },
+        All: {
+          T: document.getElementById("all_type").value,
+          Text: document.getElementById("alltextbox").value
+        },
+        Any: {
+          T: document.getElementById("any_type").value,
+          Text: document.getElementById("anytextbox").value
+        },
+        Not: {
+          T: document.getElementById("not_type").value,
+          Text: document.getElementById("nottextbox").value
+        }
+      }
+      if (searchQuery.All.Text.length + searchQuery.Any.Text.length > 0) {
+        document.getElementById("currentFile").innerHTML = "Select a File"
+        data.advSearchManifest(searchQuery)
+      } else {
+        data.clearSearchResult()
+        document.getElementById("currentFile").innerHTML = "Enter terms above to begin your search"
+      }
+    },
+    toggleadvanced: function(){
+      if (data.searchmode == "simple") {
+        data.searchmode = "advanced"
+        document.getElementById("search_form").style.display = "none"
+        document.getElementById("search_form_adv").style.display = "block"
+      } else {
+        data.searchmode = "simple"
+        document.getElementById("search_form").style.display = "block"
+        document.getElementById("search_form_adv").style.display = "none"
+      }
     },
     createManifest: function(eve){
         eve.preventDefault()
@@ -281,7 +379,7 @@ let index = {
         document.getElementById("footer").style.display = "block"
         data.view = "docsheet"
         data.selectedFile = file
-        
+
         // document.getElementById("left_header").innerHTML = "Export Docsheet"
 
         document.getElementById("selectedFile").innerHTML = file
@@ -293,6 +391,9 @@ let index = {
 
         document.getElementById("gotoselect").disabled = false
         document.getElementById("gotomanifest").disabled = false
+        document.getElementById("advgotoselect").disabled = false
+        document.getElementById("advgotomanifest").disabled = false
+        index.displayBackButton()
         //document.getElementById("gotosearch").disabled = false
 
         document.getElementById("docsheet_name").value = ""
@@ -361,13 +462,13 @@ let index = {
         document.getElementById("resultdisplay").appendChild(block)
     },
     searchPrev: function() {
-        data.setSearchDisplay(data.searchDisplay.file, 
-            data.searchDisplay.first - data.defaultsize, 
+        data.setSearchDisplay(data.searchDisplay.file,
+            data.searchDisplay.first - data.defaultsize,
             data.searchDisplay.last - data.defaultsize)
     },
     searchNext: function() {
-        data.setSearchDisplay(data.searchDisplay.file, 
-            data.searchDisplay.first + data.defaultsize, 
+        data.setSearchDisplay(data.searchDisplay.file,
+            data.searchDisplay.first + data.defaultsize,
             data.searchDisplay.last + data.defaultsize)
     },
     tofileinfo: function(file, start) {
@@ -375,10 +476,15 @@ let index = {
         data.currentDisplay.style.display = "none"
         data.currentDisplay = document.getElementById("display_fileinfo")
         data.currentDisplay.style.display = "block"
+        // if (data.searchResult.length > 0) {
+        //   document.getElementById("back_to_search").style.display = "block"
+        // } else {
+        //   document.getElementById("back_to_search").style.display = "none"
+        // }
         document.getElementById("footer").style.display = "block"
         data.view = "fileinfo"
         data.updateFileinfo(file, start)
-        
+
         // document.getElementById("left_header").innerHTML = "Export Docsheet"
 
         index.changeBackColor("rgb(179, 179, 255)")
@@ -388,6 +494,9 @@ let index = {
 
         document.getElementById("gotoselect").disabled = false
         document.getElementById("gotomanifest").disabled = false
+        document.getElementById("advgotoselect").disabled = false
+        document.getElementById("advgotomanifest").disabled = false
+        index.displayBackButton()
         //document.getElementById("gotosearch").disabled = false
     },
     updateFileinfo: function() {
@@ -407,5 +516,45 @@ let index = {
     },
     fileinfonext: function() {
         data.updateFileinfo(data.fileinfo.focus, data.fileinfo.start + 10)
+    },
+    submitLicense: function(eve) {
+      eve.preventDefault()
+      let entry = document.getElementById("licensebox").value
+      if (entry.length > 0) {
+        asticode.loader.show()
+        astilectron.sendMessage({"name":"acquire.license", "payload": entry}, function(message){
+          asticode.loader.hide()
+          if (message.name === "error") {
+            asticode.notifier.error(message.payload)
+            return
+          }
+          data.init(index.toSelect, message.payload)
+        })
+      }
+    },
+    clearAdvSearch: function() {
+      document.getElementById("alltextbox").value = ""
+      document.getElementById("anytextbox").value = ""
+      document.getElementById("nottextbox").value = ""
+      document.getElementById("all_type").value = "match"
+      document.getElementById("any_type").value = "match"
+      document.getElementById("not_type").value = "match"
+      document.getElementById("searchBlockType").value = "sentence"
+      document.getElementById("blockamount").value = 1
+    },
+    toexportsearch: function() {
+      data.currentDisplay.style.display = "none"
+      data.currentDisplay = document.getElementById("display_export")
+      data.currentDisplay.style.display = "block"
+      document.getElementById("footer").style.display = "block"
+      data.view = "searchexport"
+
+      index.changeBackColor("rgb(255, 235, 252)")
+
+      document.getElementById("gotoselect").disabled = false
+      document.getElementById("gotomanifest").disabled = false
+      document.getElementById("advgotoselect").disabled = false
+      document.getElementById("advgotomanifest").disabled = false
+      index.displayBackButton()
     }
 }
